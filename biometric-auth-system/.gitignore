@@ -1,0 +1,18 @@
+#Arquivos e pastas do Python
+pycache/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+#Arquivos de banco de dados
+*.db
+*.sqlite
+*.sqlite3
+
+#Arquivos de sistema
+.DS_Store
+Thumbs.db

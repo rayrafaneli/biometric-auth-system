@@ -1,0 +1,4 @@
+#Lista de bibliotecas Python necessárias para o projeto.
+#Instale todas com: pip install -r requirements.txt
+opencv-python
+numpy
