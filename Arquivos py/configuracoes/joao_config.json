@@ -1,0 +1,22 @@
+{
+    "base_directory": "facial_dataset",
+    "user_id": "user1",
+    "variations": [
+        "neutro",
+        "sorrindo",
+        "surpreso",
+        "virado_esquerda",
+        "virado_direita"
+    ],
+    "images_per_variation": 15,
+    "capture_interval": 1.5,
+    "resolution": [
+        640,
+        480
+    ],
+    "min_face_size": [
+        100,
+        100
+    ],
+    "require_face_detection": true
+}
