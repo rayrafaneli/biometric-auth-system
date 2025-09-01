@@ -55,7 +55,7 @@ biometric-auth-system/
 
 1. Clone o repositório:
 ```bash
-git clone <url-do-seu-repositorio>
+git clone https://github.com/rayrafaneli/biometric-auth-system.git
 cd biometric-auth-system
 ```
 
