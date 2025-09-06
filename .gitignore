@@ -7,12 +7,18 @@ pycache/
 env/
 venv/
 .venv/
+*.jpg
+*.png
+*.jpeg
 
 #Arquivos de banco de dados
 *.db
 *.sqlite
 *.sqlite3
-
+data/
+data/imagem_to_athenticate/
+data/imagem_to_register/
 #Arquivos de sistema
 .DS_Store
 Thumbs.db
+__pycache__/

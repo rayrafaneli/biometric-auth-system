@@ -8,48 +8,47 @@ class CaptureConfig:
     Armazena e valida todos os parâmetros necessários para sessões de captura,
     incluindo diretórios, usuário, variações, resolução e critérios de qualidade.
     """
-    def __init__(self, base_directory, user_id, variations, images_per_variation, capture_interval, resolution, min_face_size, require_face_detection):
+    def __init__(self,
+                 user_id,
+                 base_directory='data/images_to_register',
+                 variations=None,
+                 images_per_variation=5,
+                 capture_interval=1.0,
+                 resolution=(640, 480),
+                 min_face_size=(100, 100),
+                 require_face_detection=True):
 
-        # Conversão de listas para tuplas 
+        # Permite criar uma configuração com valores razoáveis por padrão.
+        # O único parâmetro obrigatório é user_id (identificador do usuário).
+
+        # Conversão de listas para tuplas
         if isinstance(resolution, list):
             resolution = tuple(resolution)
         if isinstance(min_face_size, list):
             min_face_size = tuple(min_face_size)
+
         # Diretório base onde todo o dataset será armazenado
-        # Deve ser um caminho válido no sistema de arquivos
-        self.base_directory= base_directory
-             
+        self.base_directory = base_directory
+
         # Identificador único do usuário/participante
-        # Será usado para criar subdiretórios e nomear arquivos
-        # Deve ser alfanumérico e sem caracteres especiais
-        self.user_id=user_id
-             
-        # Lista de variações expressivas/condições a serem capturadas
-        # Cada variação será uma subpasta dentro do diretório do usuário
-        self.variations=variations if variations else ["neutro", "sorrindo", "virado_esquerda", "virado_direita"]
-            
-        # Número de imagens a serem capturadas para cada variação
-        # Recomenda-se entre 15-30 para um dataset balanceado
-        # Valor muito baixo pode levar underfitting, muito alto overfitting
-        self.images_per_variation= images_per_variation
-        # Intervalo em segundos entre capturas consecutivas
-        # Permite ao usuário ajustar pose/expressão entre capturas
-        # Muito curto: imagens muito similares; Muito longo: processo lento
-        self.capture_interval= capture_interval
-             
-        # Resolução desejada para as imagens capturadas (largura, altura)
-        # Afeta qualidade da imagem e requisitos de armazenamento
-        # Resoluções muito altas podem dificultar processamento posterior
-        self.resolution= resolution
-             
-        # Tamanho mínimo em pixels que um rosto deve ter para ser considerado válido
-        # (altura, largura) - ajuda a filtrar falsas detecções ou rostos muito distantes
-        # Ajuste conforme a distância esperada entre usuário e câmera
-        self.min_face_size=min_face_size
-             
-        # Flag que indica se deve validar a presença de rosto antes de salvar imagens
-        # True: só salva se rosto for detectado; False: salva todas as imagens
-        # Recomendado True para garantir qualidade do dataset
+        self.user_id = user_id
+
+        # Lista de variações; default simples para integração leve
+        self.variations = variations if variations else ['default']
+
+        # Quantidade de imagens por variação (valor padrão pequeno e rápido)
+        self.images_per_variation = images_per_variation
+
+        # Intervalo entre capturas em segundos
+        self.capture_interval = capture_interval
+
+        # Resolução padrão (w,h)
+        self.resolution = resolution
+
+        # Tamanho mínimo de face (h,w)
+        self.min_face_size = min_face_size
+
+        # Salvar apenas se rosto detectado?
         self.require_face_detection = require_face_detection
 
     #validando os paâmetros    
