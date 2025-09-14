@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 
 class CaptureSession:
-    def __init__(self, config):
+    def __init__(self, config, display_callback=None):
         """
         Gerencia sessões de captura facial automática com interface fluida.
         Controla todo o processo de captura de imagens faciais, incluindo inicialização
@@ -18,23 +18,26 @@ class CaptureSession:
         self.current_image_count: int = 0
         self.is_capturing: bool = False
         self.ultimo_tempo_captura: float = 0
+        self.display_callback = display_callback
         
         # Carrega o classificador Haar Cascade para detecção facial
         self.face_cascade = cv2.CascadeClassifier(
             cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         )
     
+    def enviar_status(self, mensagem: str):
+        if self.status_callback:
+            self.status_callback(mensagem)
+
     #Inicializa e configura a câmera com verificação de permissões.
     def inicializar_camera(self, camera_index: int = 0) -> bool:
         try:
             # Fechar câmera anterior se existir
             if hasattr(self, 'cap') and self.cap:
                 self.cap.release()
-                time.sleep(0.3)
             
             # Inicializar com backend DSHOW (Windows)
-            self.cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
-            time.sleep(0.5)  # Tempo para inicialização
+            self.cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW) # OU CAP_MSMF SE TIVER USANDO DROIDCAM
             
             if not self.cap.isOpened():
                 print("❌ Câmera não acessível. Verifique as permissões.")
@@ -51,7 +54,6 @@ class CaptureSession:
                 if ret and frame is not None:
                     print(f"✅ Câmera {camera_index} inicializada - {frame.shape[1]}x{frame.shape[0]}")
                     return True
-                time.sleep(0.1)
             
             print("❌ Câmera não retorna imagens válidas")
             return False
@@ -94,6 +96,8 @@ class CaptureSession:
             cv2.putText(frame_display, texto_contagem, (15, 185), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 200, 255), 2)
         
+        self.rosto_detectado = False
+
         # Detecção facial sutil
         if self.config.require_face_detection:
             try:
@@ -101,6 +105,7 @@ class CaptureSession:
                 faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(100, 100))
                 
                 if len(faces) > 0:
+                    self.rosto_detectado = True
                     for (x, y, w, h) in faces:
                         # Retângulo verde suave
                         cv2.rectangle(frame_display, (x, y), (x+w, y+h), (0, 255, 0), 2)
@@ -147,25 +152,31 @@ class CaptureSession:
             frame_processado = self._processar_frame_fluido(frame, variacao_nome, tempo_restante)
             
             # Mostrar frame processado
-            cv2.imshow('Captura Facial Automática - ESC para cancelar', frame_processado)
             
+            if self.display_callback:
+                self.display_callback(frame_processado)
+            
+            # cv2.imshow('Captura Facial Automática - ESC para cancelar', frame_processado)
+
             # Verificar cancelamento
+
+            '''
             if cv2.waitKey(1) & 0xFF == 27:
                 self.is_capturing = False
                 return False
+            '''
             
             # Verificar se é hora de capturar
-            if tempo_decorrido >= self.config.capture_interval or self.current_image_count == 0:
-                if self._salvar_imagem(frame, variacao_nome):
-                    self.current_image_count += 1
-                    self.ultimo_tempo_captura = time.time()
+            if (tempo_decorrido >= self.config.capture_interval or self.current_image_count == 0):
+                if self.rosto_detectado:
+                    if self._salvar_imagem(frame, variacao_nome):
+                        self.current_image_count += 1
+                        self.ultimo_tempo_captura = time.time()
+                        self.enviar_status(f"   ✅ [{self.current_image_count}/{self.config.images_per_variation}] Imagem salva")
+                        print(f"   ✅ [{self.current_image_count}/{self.config.images_per_variation}] Imagem salva")
+                else:
+                    self.enviar_status("⛔ Rosto não detectado — aguardando posicionamento...")
                     
-                    # Feedback no console
-                    print(f"   ✅ [{self.current_image_count}/{self.config.images_per_variation}] Imagem salva")
-                    
-                    # Pequena pausa para feedback visual
-                    time.sleep(0.1)
-        
         print(f"   ✅ {variacao_nome} concluída - {self.current_image_count} imagens")
         return True
     
@@ -200,19 +211,28 @@ class CaptureSession:
             cv2.putText(frame_display, f"{int(tempo_restante) + 1}...", (50, 220), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 255), 3)
             
-            cv2.imshow('Captura Facial Automática - ESC para cancelar', frame_display)
+
+            if self.display_callback:
+                self.display_callback(frame_display)
             
+            # cv2.imshow('Captura Facial Automática - ESC para cancelar', frame_display)
+
+            '''
             if cv2.waitKey(30) & 0xFF == 27:
                 self.is_capturing = False
                 return False
+            '''
         
         # Frame final de transição
         ret, frame = self.cap.read()
         if ret:
             cv2.putText(frame, f"🎬 {proxima_variacao.upper()}!", (50, 100), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
-            cv2.imshow('Captura Facial Automática - ESC para cancelar', frame)
-            cv2.waitKey(300)  # Breve pausa
+            if self.display_callback:
+                self.display_callback(frame)
+
+            # cv2.imshow('Captura Facial Automática - ESC para cancelar', frame)
+            # cv2.waitKey(300)  # Breve pausa
         
         return True
     
@@ -292,9 +312,11 @@ class CaptureSession:
                 self.current_image_count = 0
 
             if self.is_capturing:
+                self.enviar_status("\n🎉 CAPTURA CONCLUÍDA COM SUCESSO!")
                 print("\n🎉 CAPTURA CONCLUÍDA COM SUCESSO!")
                 return True
             else:
+                self.enviar_status("\n⏹️ CAPTURA INTERROMPIDA")
                 print("\n⏹️ CAPTURA INTERROMPIDA")
                 return False
 
