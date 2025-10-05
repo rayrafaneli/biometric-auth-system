@@ -53,10 +53,7 @@ def _align_and_preprocess(img, size=(64, 64)):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Detectar rosto com Haar Cascade
-    face_cascade_path = os.path.join(os.path.dirname(__file__), 'cascades', 'haarcascade_frontalface_default.xml')
-    face_cascade = cv2.CascadeClassifier(face_cascade_path)
-    if face_cascade.empty():
-        raise FileNotFoundError(f"Cascade não encontrado: {face_cascade_path}. Certifique-se de que o arquivo existe.")
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     faces = []
     # Se o cascade não carregou (paths com caracteres especiais podem quebrar), evitar chamar detectMultiScale
     if not face_cascade.empty():

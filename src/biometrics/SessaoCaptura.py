@@ -24,10 +24,7 @@ class CaptureSession:
         self.display_callback = display_callback
         
         # Carrega o classificador Haar Cascade para detecção facial
-        face_cascade_path = os.path.join(os.path.dirname(__file__), 'cascades', 'haarcascade_frontalface_default.xml')
-        self.face_cascade = cv2.CascadeClassifier(face_cascade_path)
-        if self.face_cascade.empty():
-            raise FileNotFoundError(f"Cascade não encontrado: {face_cascade_path}. Certifique-se de que o arquivo existe.")
+        self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     
     def enviar_status(self, mensagem: str):
         if self.status_callback:
