@@ -101,25 +101,29 @@ class CaptureSession:
 
         # Detecção facial sutil
         if self.config.require_face_detection:
-            try:
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(100, 100))
-                
-                if len(faces) > 0:
-                    self.rosto_detectado = True
-                    for (x, y, w, h) in faces:
-                        # Retângulo verde suave
-                        cv2.rectangle(frame_display, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                    
-                    status_text = "✅ ROSTO DETECTADO"
-                    cv2.putText(frame_display, status_text, (largura - 280, 30), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                else:
-                    status_text = "👤 POSICIONE-SE"
-                    cv2.putText(frame_display, status_text, (largura - 250, 30), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
-            except:
-                pass
+            if self.face_cascade.empty():
+                # Se o cascade não carregou, permite captura sem detecção
+                self.rosto_detectado = True
+                status_text = "⚠️ Detecção desativada (cascade não carregado)"
+                cv2.putText(frame_display, status_text, (15, 30), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
+            else:
+                try:
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(100, 100))
+                    if len(faces) > 0:
+                        self.rosto_detectado = True
+                        for (x, y, w, h) in faces:
+                            cv2.rectangle(frame_display, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                        status_text = "✅ ROSTO DETECTADO"
+                        cv2.putText(frame_display, status_text, (largura - 280, 30), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    else:
+                        status_text = "👤 POSICIONE-SE"
+                        cv2.putText(frame_display, status_text, (largura - 250, 30), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
+                except:
+                    pass
         
         # Timestamp discreto
         timestamp = datetime.now().strftime("%H:%M:%S")
