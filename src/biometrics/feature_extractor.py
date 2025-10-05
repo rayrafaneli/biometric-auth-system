@@ -53,7 +53,8 @@ def _align_and_preprocess(img, size=(64, 64)):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Detectar rosto com Haar Cascade
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    cascade_path = r'C:\haarcascades\haarcascade_frontalface_default.xml'
+    face_cascade = cv2.CascadeClassifier(cascade_path)
     faces = []
     # Se o cascade não carregou (paths com caracteres especiais podem quebrar), evitar chamar detectMultiScale
     if not face_cascade.empty():
@@ -76,10 +77,10 @@ def _align_and_preprocess(img, size=(64, 64)):
         face_img = img[y1:y2, x1:x2]
 
         # tentar alinhar pelos olhos
-        eye_cascade_path = cv2.data.haarcascades + 'haarcascade_eye.xml'
+        eye_cascade_path = r'C:\haarcascades\haarcascade_eye.xml'
         eye_cascade = cv2.CascadeClassifier(eye_cascade_path)
         if eye_cascade.empty():
-            raise FileNotFoundError(f"Cascade não encontrado: {eye_cascade_path}. Copie o arquivo haarcascade_eye.xml para src/biometrics/cascades/ e ajuste o código se necessário.")
+            raise FileNotFoundError(f"Cascade não encontrado: {eye_cascade_path}. Copie o arquivo haarcascade_eye.xml para C:/haarcascades e ajuste o código se necessário.")
         gray_face = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
         eyes = []
         if not eye_cascade.empty():
@@ -102,8 +103,8 @@ def _align_and_preprocess(img, size=(64, 64)):
             angle = math.degrees(math.atan2(dy, dx))
             # rotacionar o face_img para alinhar olhos horizontalmente
             face_img = _rotate_image(face_img, angle)
-    else:
-        # fallback: central crop
+
+        # fallback: central crop sempre definido
         h, w = img.shape[:2]
         side = min(w, h)
         cx, cy = w // 2, h // 2

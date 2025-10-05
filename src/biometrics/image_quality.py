@@ -5,7 +5,8 @@ import os
 import numpy as np
 
 # Carrega o classificador Haar Cascade para detecção facial
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+cascade_path = r'C:\haarcascades\haarcascade_frontalface_default.xml'
+face_cascade = cv2.CascadeClassifier(cascade_path)
 
 def is_image_quality_sufficient(image_np: np.ndarray) -> tuple[bool, str]:
     """Verifica a qualidade da imagem para reconhecimento facial.
