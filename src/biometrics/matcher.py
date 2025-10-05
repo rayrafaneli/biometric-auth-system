@@ -8,11 +8,19 @@ from typing import List, Dict, Optional
 
 # Defaults 'do objeto' — valores centrais que definem a política de decisão.
 # Se quiser ajustar a política, altere aqui apenas.
+
 DEFAULT_TOP_K = 3
-DEFAULT_BEST_THRESHOLD = 0.92
-DEFAULT_MEAN_THRESHOLD = 0.88
-DEFAULT_MARGIN = 0.04
+DEFAULT_BEST_THRESHOLD = 0.91  
+DEFAULT_MEAN_THRESHOLD = 0.88  
+DEFAULT_MARGIN = 0.04 
 DEFAULT_MIN_SAMPLES = 3
+
+DEFAULT_METRIC = 'cosine'  # Nova opção de métrica
+def _euclidean_distance(a: List[float], b: List[float]) -> float:
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    return 1.0 - (math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b))) / (math.sqrt(len(a)) * 2))
+
 
 
 def _cosine_similarity(a: List[float], b: List[float]) -> float:
@@ -48,7 +56,7 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
     return _cosine_similarity(a, b)
 
 
-def score_users(query_feat: List[float], users_data: List[Dict], top_k: int = 3):
+def score_users(query_feat: List[float], users_data: List[Dict], top_k: int = 3, metric: str = DEFAULT_METRIC):
     """Para cada usuário calcula:
     - best_score: a maior similaridade entre query e amostras do usuário
     - mean_top_k: média das top_k similaridades
@@ -62,7 +70,12 @@ def score_users(query_feat: List[float], users_data: List[Dict], top_k: int = 3)
         scores = []
         for f in feats:
             try:
-                s = _cosine_similarity(query_feat, f)
+                if metric == 'cosine':
+                    s = _cosine_similarity(query_feat, f)
+                elif metric == 'euclidean':
+                    s = _euclidean_distance(query_feat, f)
+                else:
+                    s = _cosine_similarity(query_feat, f)
             except Exception:
                 s = 0.0
             scores.append(s)
@@ -82,7 +95,7 @@ def score_users(query_feat: List[float], users_data: List[Dict], top_k: int = 3)
     return results
 
 
-def find_best_match(query_feat: List[float], users_data: List[Dict]) -> Optional[Dict]:
+def find_best_match(query_feat: List[float], users_data: List[Dict], metric: str = DEFAULT_METRIC) -> Optional[Dict]:
     """Encontra o usuário com maior pontuação (máximo entre as amostras).
 
     Entrada: users_data = [{'id','name','access_level','features'}, ...]
@@ -92,10 +105,14 @@ def find_best_match(query_feat: List[float], users_data: List[Dict]) -> Optional
     best_score = -1.0
     for u in users_data:
         feats = u.get('features') or []
-        # feats pode ser uma lista de vetores; verificar
         scores = []
         for f in feats:
-            s = _cosine_similarity(query_feat, f)
+            if metric == 'cosine':
+                s = _cosine_similarity(query_feat, f)
+            elif metric == 'euclidean':
+                s = _euclidean_distance(query_feat, f)
+            else:
+                s = _cosine_similarity(query_feat, f)
             scores.append(s)
 
         # Use a maior pontuação entre as amostras do usuário (menos sensível à média)
@@ -114,14 +131,15 @@ def decide_match(query_feat: List[float], users_data: List[Dict], top_k: int = D
                 best_threshold: float = DEFAULT_BEST_THRESHOLD,
                 mean_threshold: float = DEFAULT_MEAN_THRESHOLD,
                 margin: float = DEFAULT_MARGIN,
-                min_samples: int = DEFAULT_MIN_SAMPLES):
+                min_samples: int = DEFAULT_MIN_SAMPLES,
+                metric: str = DEFAULT_METRIC):
     """Aplica a política de decisão combinada e devolve um resultado legível.
 
     Retorna: (granted, best_user, best_score, mean_top, reason, scored_list)
     - reason: texto curto em pt explicando negação (None se acesso concedido)
     - scored_list: útil para debug/print
     """
-    scored = score_users(query_feat, users_data, top_k=top_k)
+    scored = score_users(query_feat, users_data, top_k=top_k, metric=metric)
     if not scored:
         return False, None, 0.0, 0.0, 'Nenhum candidato encontrado.', scored
 

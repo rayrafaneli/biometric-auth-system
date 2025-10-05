@@ -1,5 +1,8 @@
 import cv2
 import os
+from src.biometrics.image_quality import is_image_quality_sufficient
+ # from src.biometrics.liveness_detection import detect_liveness_blink_haar, analyze_texture_lbp
+import os
 import time
 from datetime import datetime
 from typing import Optional
@@ -21,9 +24,15 @@ class CaptureSession:
         self.display_callback = display_callback
         
         # Carrega o classificador Haar Cascade para detecção facial
-        self.face_cascade = cv2.CascadeClassifier(
-            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        )
+        cascade_path_default = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        cascade_path_fallback = r'C:/haarcascades/haarcascade_frontalface_default.xml'
+        self.face_cascade = cv2.CascadeClassifier(cascade_path_default)
+        if self.face_cascade.empty():
+            if os.path.exists(cascade_path_fallback):
+                self.face_cascade = cv2.CascadeClassifier(cascade_path_fallback)
+                print("[INFO] Haar Cascade padrão não encontrado. Usando fallback em C:/haarcascades.")
+            else:
+                print("[WARN] Nenhum arquivo haarcascade_frontalface_default.xml encontrado. Detecção de rosto desativada.")
     
     def enviar_status(self, mensagem: str):
         if self.status_callback:
@@ -100,25 +109,29 @@ class CaptureSession:
 
         # Detecção facial sutil
         if self.config.require_face_detection:
-            try:
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(100, 100))
-                
-                if len(faces) > 0:
-                    self.rosto_detectado = True
-                    for (x, y, w, h) in faces:
-                        # Retângulo verde suave
-                        cv2.rectangle(frame_display, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                    
-                    status_text = "✅ ROSTO DETECTADO"
-                    cv2.putText(frame_display, status_text, (largura - 280, 30), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                else:
-                    status_text = "👤 POSICIONE-SE"
-                    cv2.putText(frame_display, status_text, (largura - 250, 30), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
-            except:
-                pass
+            if self.face_cascade.empty():
+                # Se o cascade não carregou, permite captura sem detecção
+                self.rosto_detectado = True
+                status_text = "⚠️ Detecção desativada (cascade não carregado)"
+                cv2.putText(frame_display, status_text, (15, 30), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
+            else:
+                try:
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(100, 100))
+                    if len(faces) > 0:
+                        self.rosto_detectado = True
+                        for (x, y, w, h) in faces:
+                            cv2.rectangle(frame_display, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                        status_text = "✅ ROSTO DETECTADO"
+                        cv2.putText(frame_display, status_text, (largura - 280, 30), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    else:
+                        status_text = "👤 POSICIONE-SE"
+                        cv2.putText(frame_display, status_text, (largura - 250, 30), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
+                except:
+                    pass
         
         # Timestamp discreto
         timestamp = datetime.now().strftime("%H:%M:%S")
@@ -169,14 +182,19 @@ class CaptureSession:
             # Verificar se é hora de capturar
             if (tempo_decorrido >= self.config.capture_interval or self.current_image_count == 0):
                 if self.rosto_detectado:
-                    if self._salvar_imagem(frame, variacao_nome):
-                        self.current_image_count += 1
-                        self.ultimo_tempo_captura = time.time()
-                        self.enviar_status(f"   ✅ [{self.current_image_count}/{self.config.images_per_variation}] Imagem salva")
-                        print(f"   ✅ [{self.current_image_count}/{self.config.images_per_variation}] Imagem salva")
+                    # Verificar qualidade da imagem antes de salvar
+                    quality_ok, quality_message = is_image_quality_sufficient(frame)
+                    if quality_ok:
+                        if self._salvar_imagem(frame, variacao_nome):
+                            self.current_image_count += 1
+                            self.ultimo_tempo_captura = time.time()
+                            self.enviar_status(f"   ✅ [{self.current_image_count}/{self.config.images_per_variation}] Imagem salva")
+                        else:
+                            self.enviar_status("❌ Erro ao salvar imagem.")
+                    else:
+                        self.enviar_status(f"⚠️ Qualidade da imagem insuficiente: {quality_message}")
                 else:
                     self.enviar_status("⛔ Rosto não detectado — aguardando posicionamento...")
-                    
         print(f"   ✅ {variacao_nome} concluída - {self.current_image_count} imagens")
         return True
     

@@ -15,6 +15,10 @@ venv/
 *.db
 *.sqlite
 *.sqlite3
+biometric-auth-system
+biometric-auth-system/
+backup/
+backup
 data/
 data/imagem_to_athenticate/
 data/imagem_to_register/

@@ -13,44 +13,6 @@ Ele foi desenvolvido como uma solução prática para **cadastrar usuários, arm
 
 ---
 
-## 📂 Estrutura do Projeto
-
-```bash
-biometric-auth-system/
-│
-├── data/
-│   ├── images_to_register/      # imagens para cadastrar novos usuários (criado na 1ª execução)
-│   └── images_to_authenticate/  # imagens para testar a autenticação (criado na 1ª execução)
-│
-├── notebooks/                   # notebooks para prototipagem e testes
-│   └── 1-testando-extracao.ipynb
-│
-├── src/                         # código-fonte da aplicação
-│   ├── biometrics/              # lógica biométrica
-│   │   ├── __init__.py
-│   │   ├── feature_extractor.py # extração de características
-│   │   └── matcher.py           # comparação de biometrias
-│   │
-│   ├── database/                # gerenciamento do banco de dados
-│   │   ├── __init__.py
-│   │   └── database_manager.py  # operações no banco de dados
-│   │
-│   └── models/                  # modelos de dados
-│       ├── __init__.py
-│       └── user.py              # classe de usuário
-│
-├── tests/                       # testes unitários
-│   ├── __init__.py
-│   └── test_database.py
-│
-├── .gitignore                   # arquivos ignorados pelo Git
-├── main.py                      # ponto de entrada da aplicação
-├── requirements.txt             # dependências do projeto
-└── biometric_database.db        # banco de dados SQLite (criado na 1ª execução)
-```
-
----
-
 ## ⚙️ Como Executar
 
 1. Clone o repositório:
@@ -74,15 +36,19 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+---
+## ⚠️ Solução de Problemas
+Ocasionalmente, o OpenCV pode não ler corretamente o caminho para os recursos de Haar Cascade. Se o sistema apresentar erros relacionados a não encontrar esses arquivos:
+
+**Solução** - Mova a pasta haarcascades (localizada em src/biometrics/haarcascades) inteira para a raiz do seu disco principal, como C:/. O sistema deve então conseguir localizar os arquivos necessários.
 
 ---
 
 ## 🧰 Tecnologias Utilizadas
 
 - **Python 3.10+**
-- **OpenCV** – Processamento e captura de imagens  
-- **#** – Extração de características faciais  
-- **#** – UI  
+- **OpenCV** – Processamento e captura de imagens   
+- **PyQt6 ** – Interface Gráfica (UI)
 - **SQLite3** – Banco de dados leve e integrado    
 
 

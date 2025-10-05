@@ -1,6 +1,40 @@
 import os
 import cv2
 import numpy as np
+import math
+from typing import List
+
+# --- Inicialização única dos cascades ---
+def get_cascade(cascade_path_default, cascade_path_fallback, info_msg, warn_msg):
+    cascade = cv2.CascadeClassifier(cascade_path_default)
+    if cascade.empty():
+        if os.path.exists(cascade_path_fallback):
+            cascade = cv2.CascadeClassifier(cascade_path_fallback)
+            print(info_msg)
+        else:
+            print(warn_msg)
+            return None
+    return cascade
+
+# Inicializa apenas uma vez
+FACE_CASCADE = get_cascade(
+    cv2.data.haarcascades + 'haarcascade_frontalface_default.xml',
+    r'C:/haarcascades/haarcascade_frontalface_default.xml',
+    '[INFO] Haar Cascade padrão não encontrado. Usando fallback em C:/haarcascades.',
+    '[WARN] Nenhum arquivo haarcascade_frontalface_default.xml encontrado. Detecção de rosto desativada.'
+)
+EYE_CASCADE = get_cascade(
+    cv2.data.haarcascades + 'haarcascade_eye.xml',
+    r'C:/haarcascades/haarcascade_eye.xml',
+    '[INFO] Haar Cascade de olhos padrão não encontrado. Usando fallback em C:/haarcascades.',
+    '[WARN] Nenhum arquivo haarcascade_eye.xml encontrado. Alinhamento por olhos desativado.'
+)
+import os
+from src.biometrics.image_quality import is_image_quality_sufficient
+ # from src.biometrics.liveness_detection import detect_liveness_blink_haar, analyze_texture_lbp
+import cv2
+import os
+import numpy as np
 from typing import List
 import math
 
@@ -50,12 +84,10 @@ def _align_and_preprocess(img, size=(64, 64)):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Detectar rosto com Haar Cascade
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     faces = []
-    # Se o cascade não carregou (paths com caracteres especiais podem quebrar), evitar chamar detectMultiScale
-    if not face_cascade.empty():
+    if FACE_CASCADE is not None:
         try:
-            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80))
+            faces = FACE_CASCADE.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80))
         except Exception:
             faces = []
 
@@ -73,12 +105,11 @@ def _align_and_preprocess(img, size=(64, 64)):
         face_img = img[y1:y2, x1:x2]
 
         # tentar alinhar pelos olhos
-        eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
         gray_face = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
         eyes = []
-        if not eye_cascade.empty():
+        if EYE_CASCADE is not None:
             try:
-                eyes = eye_cascade.detectMultiScale(gray_face)
+                eyes = EYE_CASCADE.detectMultiScale(gray_face)
             except Exception:
                 eyes = []
         if len(eyes) >= 2:
@@ -96,8 +127,8 @@ def _align_and_preprocess(img, size=(64, 64)):
             angle = math.degrees(math.atan2(dy, dx))
             # rotacionar o face_img para alinhar olhos horizontalmente
             face_img = _rotate_image(face_img, angle)
-    else:
-        # fallback: central crop
+
+        # fallback: central crop sempre definido
         h, w = img.shape[:2]
         side = min(w, h)
         cx, cy = w // 2, h // 2
@@ -187,13 +218,28 @@ def extract_features_from_folder(folder_path: str) -> List[float]:
     return [v.tolist() for v in vecs]
 
 
-def extract_feature_from_image(image_path: str):
+def extract_feature_from_image(image_np: np.ndarray):
     """Extrai um vetor de features de uma única imagem.
     Aplica o mesmo pré-processamento que `extract_features_from_folder`.
 
-    Retorna lista vazia se a imagem não puder ser lida.
+    Args:
+        image_np: A imagem como um array NumPy (BGR).
+
+    Returns:
+        lista de floats (vetor de features) se a imagem for válida e passar nas verificações, caso contrário, lista vazia.
     """
-    v = _image_to_vector(image_path)
+    if image_np is None or image_np.size == 0:
+        return []
+
+    # 1. Verificação de Qualidade da Imagem
+    quality_ok, quality_message = is_image_quality_sufficient(image_np)
+    if not quality_ok:
+        print(f"[Feature Extractor] Qualidade da imagem insuficiente: {quality_message}")
+        return []
+
+
+    # Se todas as verificações passarem, extrair as features
+    v = _image_to_vector(image_np)
     if v is None:
         return []
     return v.tolist()
