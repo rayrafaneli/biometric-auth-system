@@ -53,8 +53,12 @@ def _align_and_preprocess(img, size=(64, 64)):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Detectar rosto com Haar Cascade
-    cascade_path = r'C:\haarcascades\haarcascade_frontalface_default.xml'
-    face_cascade = cv2.CascadeClassifier(cascade_path)
+    cascade_path_default = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+    face_cascade = cv2.CascadeClassifier(cascade_path_default)
+    if face_cascade.empty():
+        cascade_path_fallback = r'C:/haarcascades/haarcascade_frontalface_default.xml'
+        face_cascade = cv2.CascadeClassifier(cascade_path_fallback)
+        print('[INFO] Haar Cascade padrão não encontrado. Usando fallback em C:/haarcascades.')
     faces = []
     # Se o cascade não carregou (paths com caracteres especiais podem quebrar), evitar chamar detectMultiScale
     if not face_cascade.empty():
@@ -77,10 +81,14 @@ def _align_and_preprocess(img, size=(64, 64)):
         face_img = img[y1:y2, x1:x2]
 
         # tentar alinhar pelos olhos
-        eye_cascade_path = r'C:\haarcascades\haarcascade_eye.xml'
-        eye_cascade = cv2.CascadeClassifier(eye_cascade_path)
+        eye_cascade_path_default = cv2.data.haarcascades + 'haarcascade_eye.xml'
+        eye_cascade = cv2.CascadeClassifier(eye_cascade_path_default)
         if eye_cascade.empty():
-            raise FileNotFoundError(f"Cascade não encontrado: {eye_cascade_path}. Copie o arquivo haarcascade_eye.xml para C:/haarcascades e ajuste o código se necessário.")
+            eye_cascade_path_fallback = r'C:/haarcascades/haarcascade_eye.xml'
+            eye_cascade = cv2.CascadeClassifier(eye_cascade_path_fallback)
+            print('[INFO] Haar Cascade de olhos padrão não encontrado. Usando fallback em C:/haarcascades.')
+        if eye_cascade.empty():
+            raise FileNotFoundError(f"Cascade não encontrado: {eye_cascade_path_fallback}. Copie o arquivo haarcascade_eye.xml para C:/haarcascades e ajuste o código se necessário.")
         gray_face = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
         eyes = []
         if not eye_cascade.empty():

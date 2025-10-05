@@ -5,8 +5,12 @@ import os
 import numpy as np
 
 # Carrega o classificador Haar Cascade para detecção facial
-cascade_path = r'C:\haarcascades\haarcascade_frontalface_default.xml'
-face_cascade = cv2.CascadeClassifier(cascade_path)
+cascade_path_default = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+face_cascade = cv2.CascadeClassifier(cascade_path_default)
+if face_cascade.empty():
+    cascade_path_fallback = r'C:/haarcascades/haarcascade_frontalface_default.xml'
+    face_cascade = cv2.CascadeClassifier(cascade_path_fallback)
+    print('[INFO] Haar Cascade padrão não encontrado. Usando fallback em C:/haarcascades.')
 
 def is_image_quality_sufficient(image_np: np.ndarray) -> tuple[bool, str]:
     """Verifica a qualidade da imagem para reconhecimento facial.
