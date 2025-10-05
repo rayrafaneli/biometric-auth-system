@@ -25,12 +25,14 @@ class CaptureSession:
         
         # Carrega o classificador Haar Cascade para detecção facial
         cascade_path_default = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        cascade_path_fallback = r'C:/haarcascades/haarcascade_frontalface_default.xml'
         self.face_cascade = cv2.CascadeClassifier(cascade_path_default)
         if self.face_cascade.empty():
-            # Fallback para C:/haarcascades se não conseguir carregar do padrão
-            cascade_path_fallback = r'C:/haarcascades/haarcascade_frontalface_default.xml'
-            self.face_cascade = cv2.CascadeClassifier(cascade_path_fallback)
-            print("[INFO] Haar Cascade padrão não encontrado. Usando fallback em C:/haarcascades.")
+            if os.path.exists(cascade_path_fallback):
+                self.face_cascade = cv2.CascadeClassifier(cascade_path_fallback)
+                print("[INFO] Haar Cascade padrão não encontrado. Usando fallback em C:/haarcascades.")
+            else:
+                print("[WARN] Nenhum arquivo haarcascade_frontalface_default.xml encontrado. Detecção de rosto desativada.")
     
     def enviar_status(self, mensagem: str):
         if self.status_callback:

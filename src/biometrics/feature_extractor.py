@@ -1,4 +1,35 @@
 import os
+import cv2
+import numpy as np
+import math
+from typing import List
+
+# --- Inicialização única dos cascades ---
+def get_cascade(cascade_path_default, cascade_path_fallback, info_msg, warn_msg):
+    cascade = cv2.CascadeClassifier(cascade_path_default)
+    if cascade.empty():
+        if os.path.exists(cascade_path_fallback):
+            cascade = cv2.CascadeClassifier(cascade_path_fallback)
+            print(info_msg)
+        else:
+            print(warn_msg)
+            return None
+    return cascade
+
+# Inicializa apenas uma vez
+FACE_CASCADE = get_cascade(
+    cv2.data.haarcascades + 'haarcascade_frontalface_default.xml',
+    r'C:/haarcascades/haarcascade_frontalface_default.xml',
+    '[INFO] Haar Cascade padrão não encontrado. Usando fallback em C:/haarcascades.',
+    '[WARN] Nenhum arquivo haarcascade_frontalface_default.xml encontrado. Detecção de rosto desativada.'
+)
+EYE_CASCADE = get_cascade(
+    cv2.data.haarcascades + 'haarcascade_eye.xml',
+    r'C:/haarcascades/haarcascade_eye.xml',
+    '[INFO] Haar Cascade de olhos padrão não encontrado. Usando fallback em C:/haarcascades.',
+    '[WARN] Nenhum arquivo haarcascade_eye.xml encontrado. Alinhamento por olhos desativado.'
+)
+import os
 from src.biometrics.image_quality import is_image_quality_sufficient
  # from src.biometrics.liveness_detection import detect_liveness_blink_haar, analyze_texture_lbp
 import cv2
@@ -53,17 +84,10 @@ def _align_and_preprocess(img, size=(64, 64)):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Detectar rosto com Haar Cascade
-    cascade_path_default = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-    face_cascade = cv2.CascadeClassifier(cascade_path_default)
-    if face_cascade.empty():
-        cascade_path_fallback = r'C:/haarcascades/haarcascade_frontalface_default.xml'
-        face_cascade = cv2.CascadeClassifier(cascade_path_fallback)
-        print('[INFO] Haar Cascade padrão não encontrado. Usando fallback em C:/haarcascades.')
     faces = []
-    # Se o cascade não carregou (paths com caracteres especiais podem quebrar), evitar chamar detectMultiScale
-    if not face_cascade.empty():
+    if FACE_CASCADE is not None:
         try:
-            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80))
+            faces = FACE_CASCADE.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80))
         except Exception:
             faces = []
 
@@ -81,19 +105,11 @@ def _align_and_preprocess(img, size=(64, 64)):
         face_img = img[y1:y2, x1:x2]
 
         # tentar alinhar pelos olhos
-        eye_cascade_path_default = cv2.data.haarcascades + 'haarcascade_eye.xml'
-        eye_cascade = cv2.CascadeClassifier(eye_cascade_path_default)
-        if eye_cascade.empty():
-            eye_cascade_path_fallback = r'C:/haarcascades/haarcascade_eye.xml'
-            eye_cascade = cv2.CascadeClassifier(eye_cascade_path_fallback)
-            print('[INFO] Haar Cascade de olhos padrão não encontrado. Usando fallback em C:/haarcascades.')
-        if eye_cascade.empty():
-            raise FileNotFoundError(f"Cascade não encontrado: {eye_cascade_path_fallback}. Copie o arquivo haarcascade_eye.xml para C:/haarcascades e ajuste o código se necessário.")
         gray_face = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
         eyes = []
-        if not eye_cascade.empty():
+        if EYE_CASCADE is not None:
             try:
-                eyes = eye_cascade.detectMultiScale(gray_face)
+                eyes = EYE_CASCADE.detectMultiScale(gray_face)
             except Exception:
                 eyes = []
         if len(eyes) >= 2:
