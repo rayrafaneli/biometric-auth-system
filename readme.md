@@ -40,7 +40,8 @@ python main.py
 ## ⚠️ Solução de Problemas
 Ocasionalmente, o OpenCV pode não ler corretamente o caminho para os recursos de Haar Cascade. Se o sistema apresentar erros relacionados a não encontrar esses arquivos:
 
-Solução: Mova a pasta haarcascades (localizada em src/biometrics/haarcascades) inteira para a raiz do seu disco principal, como C:/. O sistema deve então conseguir localizar os arquivos necessários.
+**Solução** - Mova a pasta haarcascades (localizada em src/biometrics/haarcascades) inteira para a raiz do seu disco principal, como C:/. O sistema deve então conseguir localizar os arquivos necessários.
+
 ---
 
 ## 🧰 Tecnologias Utilizadas
