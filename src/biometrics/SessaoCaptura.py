@@ -1,5 +1,8 @@
 import cv2
 import os
+from src.biometrics.image_quality import is_image_quality_sufficient
+ # from src.biometrics.liveness_detection import detect_liveness_blink_haar, analyze_texture_lbp
+import os
 import time
 from datetime import datetime
 from typing import Optional
@@ -21,9 +24,10 @@ class CaptureSession:
         self.display_callback = display_callback
         
         # Carrega o classificador Haar Cascade para detecção facial
-        self.face_cascade = cv2.CascadeClassifier(
-            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        )
+        face_cascade_path = os.path.join(os.path.dirname(__file__), 'cascades', 'haarcascade_frontalface_default.xml')
+        self.face_cascade = cv2.CascadeClassifier(face_cascade_path)
+        if self.face_cascade.empty():
+            raise FileNotFoundError(f"Cascade não encontrado: {face_cascade_path}. Certifique-se de que o arquivo existe.")
     
     def enviar_status(self, mensagem: str):
         if self.status_callback:
@@ -169,14 +173,19 @@ class CaptureSession:
             # Verificar se é hora de capturar
             if (tempo_decorrido >= self.config.capture_interval or self.current_image_count == 0):
                 if self.rosto_detectado:
-                    if self._salvar_imagem(frame, variacao_nome):
-                        self.current_image_count += 1
-                        self.ultimo_tempo_captura = time.time()
-                        self.enviar_status(f"   ✅ [{self.current_image_count}/{self.config.images_per_variation}] Imagem salva")
-                        print(f"   ✅ [{self.current_image_count}/{self.config.images_per_variation}] Imagem salva")
+                    # Verificar qualidade da imagem antes de salvar
+                    quality_ok, quality_message = is_image_quality_sufficient(frame)
+                    if quality_ok:
+                        if self._salvar_imagem(frame, variacao_nome):
+                            self.current_image_count += 1
+                            self.ultimo_tempo_captura = time.time()
+                            self.enviar_status(f"   ✅ [{self.current_image_count}/{self.config.images_per_variation}] Imagem salva")
+                        else:
+                            self.enviar_status("❌ Erro ao salvar imagem.")
+                    else:
+                        self.enviar_status(f"⚠️ Qualidade da imagem insuficiente: {quality_message}")
                 else:
                     self.enviar_status("⛔ Rosto não detectado — aguardando posicionamento...")
-                    
         print(f"   ✅ {variacao_nome} concluída - {self.current_image_count} imagens")
         return True
     

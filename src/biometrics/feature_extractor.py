@@ -1,5 +1,8 @@
 import os
+from src.biometrics.image_quality import is_image_quality_sufficient
+ # from src.biometrics.liveness_detection import detect_liveness_blink_haar, analyze_texture_lbp
 import cv2
+import os
 import numpy as np
 from typing import List
 import math
@@ -50,7 +53,10 @@ def _align_and_preprocess(img, size=(64, 64)):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Detectar rosto com Haar Cascade
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    face_cascade_path = os.path.join(os.path.dirname(__file__), 'cascades', 'haarcascade_frontalface_default.xml')
+    face_cascade = cv2.CascadeClassifier(face_cascade_path)
+    if face_cascade.empty():
+        raise FileNotFoundError(f"Cascade não encontrado: {face_cascade_path}. Certifique-se de que o arquivo existe.")
     faces = []
     # Se o cascade não carregou (paths com caracteres especiais podem quebrar), evitar chamar detectMultiScale
     if not face_cascade.empty():
@@ -73,7 +79,10 @@ def _align_and_preprocess(img, size=(64, 64)):
         face_img = img[y1:y2, x1:x2]
 
         # tentar alinhar pelos olhos
-        eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+        eye_cascade_path = cv2.data.haarcascades + 'haarcascade_eye.xml'
+        eye_cascade = cv2.CascadeClassifier(eye_cascade_path)
+        if eye_cascade.empty():
+            raise FileNotFoundError(f"Cascade não encontrado: {eye_cascade_path}. Copie o arquivo haarcascade_eye.xml para src/biometrics/cascades/ e ajuste o código se necessário.")
         gray_face = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
         eyes = []
         if not eye_cascade.empty():
@@ -187,13 +196,28 @@ def extract_features_from_folder(folder_path: str) -> List[float]:
     return [v.tolist() for v in vecs]
 
 
-def extract_feature_from_image(image_path: str):
+def extract_feature_from_image(image_np: np.ndarray):
     """Extrai um vetor de features de uma única imagem.
     Aplica o mesmo pré-processamento que `extract_features_from_folder`.
 
-    Retorna lista vazia se a imagem não puder ser lida.
+    Args:
+        image_np: A imagem como um array NumPy (BGR).
+
+    Returns:
+        lista de floats (vetor de features) se a imagem for válida e passar nas verificações, caso contrário, lista vazia.
     """
-    v = _image_to_vector(image_path)
+    if image_np is None or image_np.size == 0:
+        return []
+
+    # 1. Verificação de Qualidade da Imagem
+    quality_ok, quality_message = is_image_quality_sufficient(image_np)
+    if not quality_ok:
+        print(f"[Feature Extractor] Qualidade da imagem insuficiente: {quality_message}")
+        return []
+
+
+    # Se todas as verificações passarem, extrair as features
+    v = _image_to_vector(image_np)
     if v is None:
         return []
     return v.tolist()

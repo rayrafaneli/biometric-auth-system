@@ -13,7 +13,7 @@ class CaptureConfig:
                  base_directory='data/images_to_register',
                  variations=None,
                  images_per_variation=5,
-                 capture_interval=1.0,
+                 capture_interval=3.0,
                  resolution=(640, 480),
                  min_face_size=(100, 100),
                  require_face_detection=True):

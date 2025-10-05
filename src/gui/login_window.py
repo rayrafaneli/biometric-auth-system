@@ -212,12 +212,8 @@ class LoginWindow(QMainWindow):
             self.status_label.setText("Falha: nenhum frame disponível.")
             return
 
-        tmp_path = os.path.join('data', 'images_to_authenticate', 'tmp_capture.jpg')
-        os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
-        cv2.imwrite(tmp_path, self.current_frame)
-
         self.status_label.setText("Processando reconhecimento...")
-        query_feat = extract_func(tmp_path)
+        query_feat = extract_func(self.current_frame)
         if not query_feat:
             self.status_label.setText("Falha ao extrair features.")
             return

@@ -271,3 +271,4 @@ class TerminalController:
             print(f"Acesso concedido: {best_user['name']} (ID {best_user['id']}) - best={best_score_val:.3f} mean_top={mean_top_val:.3f}")
         else:
             print('Acesso negado:', reason)
+
