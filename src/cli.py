@@ -62,9 +62,12 @@ class TerminalController:
         print("\n--- Cadastro Simples de Usuário ---")
         try:
             name = input("Nome: ").strip()
+            # Garante que o nome é string Unicode (Python 3 já faz isso)
             if not name:
                 print("Nome não pode ser vazio.")
                 return
+            # Se quiser garantir, pode forçar:
+            # name = str(name)
 
             access_input = input("Nível de acesso (1, 2 ou 3): ").strip()
             if not access_input.isdigit() or int(access_input) not in [1, 2, 3]:

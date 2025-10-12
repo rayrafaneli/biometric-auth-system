@@ -1,11 +1,55 @@
+def remover_acentos(texto):
+    import unicodedata
+    return ''.join(c for c in unicodedata.normalize('NFKD', texto) if not unicodedata.combining(c))
+import unicodedata
+def normalize_filename(s):
+    # Permite acentos, remove apenas emojis/caracteres inválidos para Windows
+    import re
+    # Remove emojis (faixa Unicode)
+    s = re.sub(r'[\U00010000-\U0010ffff]', '', s)
+    # Remove caracteres inválidos para nome de arquivo no Windows
+    invalid = r'<>:"/\\|?*'
+    s = ''.join(c for c in s if c not in invalid)
+    return s
+    # Normaliza nome do usuário e variação para evitar erro de encoding
+    user_id_safe = normalize_filename(self.config.user_id)
+    variacao_nome_safe = normalize_filename(variacao_nome)
+    base_dir = self.config.base_directory
+    dir_path = os.path.join(base_dir, user_id_safe, variacao_nome_safe)
+    os.makedirs(dir_path, exist_ok=True)
+    img_name = f"img_{self.current_image_count+1:02d}.jpg"
+    img_path = os.path.join(dir_path, img_name)
+    try:
+        cv2.imwrite(img_path, frame)
+        return True
+    except Exception as e:
+        print(f"Erro ao salvar imagem: {e}")
+        return False
 import cv2
 import os
 from src.biometrics.image_quality import is_image_quality_sufficient
- # from src.biometrics.liveness_detection import detect_liveness_blink_haar, analyze_texture_lbp
-import os
+# from src.biometrics.liveness_detection import detect_liveness_blink_haar, analyze_texture_lbp
 import time
 from datetime import datetime
 from typing import Optional
+# Adiciona suporte a texto Unicode no preview
+from PIL import Image, ImageDraw, ImageFont
+import numpy as np
+
+def draw_unicode_text(img_np, text, position, font_size=24, color=(255,255,0), shadow=False):
+    # Converte numpy array para PIL Image
+    img_pil = Image.fromarray(cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(img_pil)
+    try:
+        # Use Arial.ttf (deve estar na pasta do projeto ou caminho do sistema)
+        font = ImageFont.truetype("Arial.ttf", font_size)
+    except Exception:
+        font = ImageFont.load_default()
+    if shadow:
+        x, y = position
+        draw.text((x+2, y+2), text, font=font, fill=(0,0,0))
+    draw.text(position, text, font=font, fill=color)
+    return cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
 
 class CaptureSession:
     def __init__(self, config, display_callback=None):
@@ -75,35 +119,36 @@ class CaptureSession:
     def _processar_frame_fluido(self, frame, variacao_nome: str, tempo_restante: float = None):
         frame_display = frame.copy()
         altura, largura = frame.shape[:2]
-        
         # Overlay semi-transparente para informações
         overlay = frame_display.copy()
         cv2.rectangle(overlay, (0, 0), (500, 200), (0, 0, 0), -1)
         cv2.addWeighted(overlay, 0.75, frame_display, 0.25, 0, frame_display)
-        
         # Informações principais
+        # Remove emojis/acentos se fonte não suportar
+        try:
+            font = ImageFont.truetype("DejaVuSans.ttf", 22)
+            font_ok = True
+        except Exception:
+            font_ok = False
+        def safe_text(s):
+            if font_ok:
+                return s
+            return normalize_filename(s)
         textos = [
-            "🎥 CAPTURA AUTOMÁTICA",
-            f"👤: {self.config.user_id}",
-            f"🎭: {variacao_nome.upper()}",
-            f"📸: {self.current_image_count}/{self.config.images_per_variation}",
-            f"⏱️: {self.config.capture_interval}s intervalo"
+            remover_acentos("CAPTURA AUTOMÁTICA"),
+            f"Usuario: {remover_acentos(self.config.user_id)}",
+            f"Variacao: {remover_acentos(variacao_nome.upper())}",
+            f"Imagens: {self.current_image_count}/{self.config.images_per_variation}",
+            f"Intervalo: {self.config.capture_interval}s"
         ]
-        
-        # Adicionar textos com sombra para melhor legibilidade
+        # Adiciona textos com sombra e acentos usando PIL
         for i, texto in enumerate(textos):
-            # Sombra
-            cv2.putText(frame_display, texto, (17, 37 + i*30),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 3)
-            # Texto principal
-            cv2.putText(frame_display, texto, (15, 35 + i*30),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+            frame_display = draw_unicode_text(frame_display, texto, (15, 35 + i*30), font_size=22, color=(255,255,0), shadow=True)
         
         # Contagem regressiva visual
         if tempo_restante is not None and tempo_restante > 0:
             texto_contagem = f"⏳ Próxima: {tempo_restante:.1f}s"
-            cv2.putText(frame_display, texto_contagem, (15, 185), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 200, 255), 2)
+            frame_display = draw_unicode_text(frame_display, texto_contagem, (15, 185), font_size=22, color=(0,200,255), shadow=True)
         
         self.rosto_detectado = False
 
@@ -112,7 +157,7 @@ class CaptureSession:
             if self.face_cascade.empty():
                 # Se o cascade não carregou, permite captura sem detecção
                 self.rosto_detectado = True
-                status_text = "⚠️ Detecção desativada (cascade não carregado)"
+                status_text = "Detecção desativada (cascade não carregado)"
                 cv2.putText(frame_display, status_text, (15, 30), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
             else:
@@ -123,7 +168,7 @@ class CaptureSession:
                         self.rosto_detectado = True
                         for (x, y, w, h) in faces:
                             cv2.rectangle(frame_display, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                        status_text = "✅ ROSTO DETECTADO"
+                        status_text = "ROSTO DETECTADO"
                         cv2.putText(frame_display, status_text, (largura - 280, 30), 
                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                     else:
@@ -274,20 +319,17 @@ class CaptureSession:
         try:
             # Gerar nome único do arquivo
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-            nome_arquivo = f"{self.config.user_id}_{variacao_nome}_{timestamp}.jpg"
-            
+            user_id_safe = remover_acentos(self.config.user_id)
+            variacao_nome_safe = remover_acentos(variacao_nome)
+            nome_arquivo = f"{user_id_safe}_{variacao_nome_safe}_{timestamp}.jpg"
             # Criar estrutura de diretórios
-            dir_path = os.path.join(self.config.base_directory, self.config.user_id, variacao_nome)
+            dir_path = os.path.join(self.config.base_directory, user_id_safe, variacao_nome_safe)
             os.makedirs(dir_path, exist_ok=True)
-            
             # Caminho completo
             caminho_completo = os.path.join(dir_path, nome_arquivo)
-            
             # Salvar imagem
             success = cv2.imwrite(caminho_completo, frame)
-            
             return success
-            
         except Exception as e:
             print(f"   ❌ Erro ao salvar imagem: {e}")
             return False
